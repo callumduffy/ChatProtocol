@@ -9,14 +9,16 @@ public class server{
 		String clientSentence, capitalisedSentence;
 		ServerSocket welcomeSocket = new ServerSocket(6789);
 		
-		String ip = "134.226.50.35";
+		String ip = "134.226.50.41";
 		int port =6789;
 		int id = 14315135;
 		String roomName = null;
 		int client_ip;
 		int tcpPort;
 		String clientName= null;
-		String temp = null;
+		String temp = null, msg = null;
+		int roomRef=0;
+		int join_id =0;
 
 		while(true) {
 				//packet to send back to the client
@@ -30,40 +32,67 @@ public class server{
 						DataOutputStream(conSocket.getOutputStream());
 				clientSentence = inFromClient.readLine();
 				capitalisedSentence = clientSentence.toUpperCase();
+				//msg received test
+				System.out.println(capitalisedSentence);
 				int type = typeCheck(capitalisedSentence);
-				
+				System.out.println(type);
 				if(type ==0 ){
 					outToClient.write(makeHELO(ip,port,id).getBytes());
 				}
 				else if(type==1){
-					roomName = capitalisedSentence.substring(capitalisedSentence.indexOf("JOIN_CHATROOM: ")+15,capitalisedSentence.length());
+					roomName = clientSentence.substring(clientSentence.indexOf("JOIN_CHATROOM: ")+15,clientSentence.length());
 					//read next
 					clientSentence = inFromClient.readLine();
-					capitalisedSentence = clientSentence.toUpperCase();
-					client_ip = Integer.parseInt(capitalisedSentence.substring(capitalisedSentence.indexOf("CLIENT_IP: ")+11,capitalisedSentence.length()));
+					client_ip = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("CLIENT_IP: ")+11,clientSentence.length()));
 					//read next
 					clientSentence = inFromClient.readLine();
-					capitalisedSentence = clientSentence.toUpperCase();
-					tcpPort = Integer.parseInt(capitalisedSentence.substring(capitalisedSentence.indexOf("PORT: ")+6,capitalisedSentence.length()));
+					tcpPort = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("PORT: ")+6,clientSentence.length()));
 					//read next
 					clientSentence = inFromClient.readLine();
-					capitalisedSentence = clientSentence.toUpperCase();
-					clientName =capitalisedSentence.substring(capitalisedSentence.indexOf("CLIENT_NAME: ")+13,capitalisedSentence.length());
-					temp = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: "+ip+"\nPORT: "+port+"\nROOM_REF: 123\nJOIN_ID: 0\n\n";
+					clientName =clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
+					temp = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: "+ip+"\nPORT: "+port+"\nROOM_REF: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
+					System.out.println("temp=" + temp);
+					outToClient.write(temp.getBytes());
+					//test server msg
+					temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+clientName+" JOINED\n\n";
+					System.out.println("temp=" + temp);
 					outToClient.write(temp.getBytes());
 				}
-				
-				//while(clientSentence!=null){
-					//System.out.println(capitalisedSentence);
-					
-				//	packet = initialCheck(capitalisedSentence);
-				//	if(packet == null){
-				//		conSocket.close();
-				//		System.exit(0);
-				//	}
-				//	outToClient.write(packet.getBytes());
-				//	System.out.println("Got");
-				//}
+				else if (type ==2){
+					welcomeSocket.close();
+					System.exit(0);
+				}
+				else if(type==3){
+					roomRef = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("LEAVE_CHATROOM: ")+17,clientSentence.length()));
+					//read next
+					clientSentence = inFromClient.readLine();
+					join_id = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("JOIN_ID: ")+9,clientSentence.length()));
+					//read next
+					clientSentence = inFromClient.readLine();
+					clientName = clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
+					temp = "LEFT_CHATROOM: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
+					System.out.println("temp=" + temp);
+					outToClient.write(temp.getBytes());
+					//test server msg
+					String t = "CHAT:"+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+clientName+" LEFT\n\n";
+					System.out.println("temp=" + t);
+					outToClient.write(t.getBytes());
+				}
+				else if(type==5){
+					roomRef = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("CHAT: ")+6,clientSentence.length()));
+					//read next
+					clientSentence = inFromClient.readLine();
+					join_id = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("JOIN_ID: ")+9,clientSentence.length()));
+					//read next
+					clientSentence = inFromClient.readLine();
+					clientName =clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
+					//read next
+					clientSentence = inFromClient.readLine();
+					msg =clientSentence.substring(clientSentence.indexOf("MESSAGE: ")+9,clientSentence.length());
+					temp = "CHAT: "+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+msg+"\n\n";
+					System.out.println("temp=" + temp);
+					outToClient.write(temp.getBytes());
+				}
 		}		
 	}	
 	
@@ -72,7 +101,7 @@ public class server{
 		if(input.contains("HELO")){
 			return 0;
 		}
-		else if(input.contains("JOIN CHATROOM:")){
+		else if(input.contains("JOIN_CHATROOM:")){
 			return 1;
 		}
 		else if(input.contains("KILL_SERVICE:")){
