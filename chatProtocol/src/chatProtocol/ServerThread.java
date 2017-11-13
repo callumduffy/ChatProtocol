@@ -7,33 +7,41 @@ import java.util.*;
 public class ServerThread extends Thread {
     private Socket socket = null;
 	private boolean alive;
+	private ServerObj s;
+	private static int runs=0, roomRef=0, join_id=0;
+	private static ArrayList<Client> clientList = new ArrayList<Client>();
 
     public ServerThread(Socket socket) {
         super("ServerThread");
         this.socket = socket;
         this.alive=true;
+        s = new ServerObj();
     }
     
     public void run() {
-
-        try (
+    	runs++;
+    	System.out.println("threads =" +runs);
+        try (	
+        		
         		BufferedReader inFromClient = new BufferedReader(new InputStreamReader(
 						socket.getInputStream()));
 				
 				DataOutputStream outToClient = new
 						DataOutputStream(socket.getOutputStream());
         ) {
+    		Client c1 = new Client("134.226.50.35",6789,this.socket);
+    		clientList.add(c1);
+    		
         	String clientSentence, capitalisedSentence;
-        	String ip = "134.226.50.41";
+        	String ip = "134.226.50.35";
     		int port =6789;
-    		int id = 14315135;
+    		int id = 14315135, temp_ref=0, temp_id=0;
     		String roomName = null;
     		int client_ip;
     		int tcpPort;
     		String clientName= null;
     		String temp = null, msg = null;
-    		int roomRef=0;
-    		int join_id =0;
+    		boolean exists = false;
     		
     		while(alive){
     			clientSentence = inFromClient.readLine();
@@ -47,8 +55,20 @@ public class ServerThread extends Thread {
 				outToClient.write(makeHELO(ip,port,id).getBytes());
 			}
 			else if(type==1){
+				//temp chatroom variable
+				Chatroom c = null;
 				roomName = clientSentence.substring(clientSentence.indexOf("JOIN_CHATROOM: ")+15,clientSentence.length());
 				//read next
+				
+				for(Map.Entry<Integer,Chatroom> e:  s.getMapEntries()){
+					if(e.getValue().getName().equals(roomName)){
+						exists=true;
+						c=e.getValue();
+						roomRef = e.getKey();
+						break;
+					}
+				}
+				
 				clientSentence = inFromClient.readLine();
 				client_ip = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("CLIENT_IP: ")+11,clientSentence.length()));
 				//read next
@@ -57,13 +77,43 @@ public class ServerThread extends Thread {
 				//read next
 				clientSentence = inFromClient.readLine();
 				clientName =clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
-				temp = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: "+ip+"\nPORT: "+port+"\nROOM_REF: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
+				c1.addName(clientName);
+				
+				//create chatroom or add to existing one
+				if(exists){
+					c.addClient(join_id,c1);
+					join_id++;
+				}
+				else{
+					c = new Chatroom(ip, port, roomName);
+					ServerObj.addChatroom(roomRef,c);
+					roomRef++;
+					c.addClient(join_id,c1);
+					join_id++;
+				}
+				exists=false;
+				
+				temp = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: "+c1.getIP()+"\nPORT: "+c1.getPort()+"\nROOM_REF: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
 				System.out.println("temp=" + temp);
 				outToClient.write(temp.getBytes());
 				//test server msg
-				temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+clientName+" JOINED\n\n";
+				temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" JOINED\n\n";
 				System.out.println("temp=" + temp);
 				outToClient.write(temp.getBytes());
+				
+				//needs to be fixed big time TODO
+				
+//				for(Client client:clientList){
+//					if(ServerObj.getRoom(join_id-1).contains(client)){
+//						temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+client.getHandle()+"\nMESSAGE: "+c1.getHandle()+" JOINED\n\n";
+//						System.out.println("temp=" + temp);
+//						outToClient.write(temp.getBytes());
+//						
+//						DataOutputStream out = new
+//								DataOutputStream((client.getSocket()).getOutputStream());
+//						out.write(temp.getBytes());
+//					}
+//				}
 			}
 			else if (type ==2){
 				alive=false;
@@ -71,6 +121,8 @@ public class ServerThread extends Thread {
 				System.exit(0);
 			}
 			else if(type==3){
+				Chatroom c = null;
+				
 				roomRef = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("LEAVE_CHATROOM: ")+16,clientSentence.length()));
 				//read next
 				clientSentence = inFromClient.readLine();
@@ -78,15 +130,30 @@ public class ServerThread extends Thread {
 				//read next
 				clientSentence = inFromClient.readLine();
 				clientName = clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
-				//clientSentence = inFromClient.readLine();
-				//System.out.println("s=" + clientSentence + ";");
-				temp = "LEFT_CHATROOM: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
-				System.out.println("temp=" + temp);
-				outToClient.write(temp.getBytes());
-				//test server msg
-				String t = "CHAT:"+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+clientName+" LEFT\n\n";
+				
+				////leave chatroom or not
+				//if(ServerObj.getRoom(temp_ref).getClientName(temp_id)==clientName){
+				//	ServerObj.getRoom(temp_ref).removeClient(temp_id);
+				//}
+				
+				String t = "LEFT_CHATROOM: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
 				System.out.println("temp=" + t);
 				outToClient.write(t.getBytes());
+				//test server msg
+				temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+clientName+" LEFT\n\n";
+				System.out.println("temp=" + t);
+				outToClient.write(temp.getBytes());
+//				
+//				if(ServerObj.getRoom(join_id-1).getSize()>1){
+//					for(Client client:clientList){
+//						if(ServerObj.getRoom(join_id-1).contains(client)){
+//							DataOutputStream out = new
+//									DataOutputStream((client.getSocket()).getOutputStream());
+//							out.write(temp.getBytes());
+//						}
+//					}
+//				}
+				
 			}
 			else if(type==5){
 				roomRef = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("CHAT: ")+6,clientSentence.length()));
@@ -117,7 +184,7 @@ public class ServerThread extends Thread {
     	else if(input.contains("JOIN_CHATROOM:")){
     		return 1;
     	}
-    	else if(input.contains("KILL_SERVICE:")){
+    	else if(input.contains("KILL_SERVICE")){
     		return 2;
     	}
     	else if(input.contains("LEAVE_CHATROOM:")){

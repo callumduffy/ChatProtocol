@@ -9,9 +9,7 @@ public class server{
 		//have to modify to use args for port number
 		int portNumber = 6789;
 	    boolean listening = true;
-	    
-	    //server set up
-	    HashMap<Integer,Chatroom> server = new HashMap<Integer,Chatroom>();
+
         
 	    try (ServerSocket serverSocket = new ServerSocket(portNumber)) { 
 	    	while (listening) {
