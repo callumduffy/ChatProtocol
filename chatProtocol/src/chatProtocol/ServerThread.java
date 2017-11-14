@@ -7,7 +7,7 @@ import java.util.*;
 public class ServerThread extends Thread {
     private Socket socket = null;
 	private boolean alive;
-	private ServerObj s;
+	private static ServerObj s= new ServerObj();;
 	private static int runs=0, roomRef=0, join_id=0;
 	private static ArrayList<Client> clientList = new ArrayList<Client>();
 
@@ -15,7 +15,6 @@ public class ServerThread extends Thread {
         super("ServerThread");
         this.socket = socket;
         this.alive=true;
-        s = new ServerObj();
     }
     
     public void run() {
@@ -29,8 +28,9 @@ public class ServerThread extends Thread {
 				DataOutputStream outToClient = new
 						DataOutputStream(socket.getOutputStream());
         ) {
-    		Client c1 = new Client("134.226.50.35",6789,this.socket);
+    		Client c1 = new Client("134.226.50.35",6789,this.socket,join_id);
     		clientList.add(c1);
+    		join_id++;
     		
         	String clientSentence, capitalisedSentence;
         	String ip = "134.226.50.35";
@@ -64,7 +64,7 @@ public class ServerThread extends Thread {
 					if(e.getValue().getName().equals(roomName)){
 						exists=true;
 						c=e.getValue();
-						roomRef = e.getKey();
+						temp_ref = e.getKey();
 						break;
 					}
 				}
@@ -81,39 +81,34 @@ public class ServerThread extends Thread {
 				
 				//create chatroom or add to existing one
 				if(exists){
-					c.addClient(join_id,c1);
-					join_id++;
+					c.addClient(c1.getID(),c1);
+					clientList.set(c1.getID(), c1);
 				}
 				else{
-					c = new Chatroom(ip, port, roomName);
+					c = new Chatroom(ip, port, roomName,roomRef);
 					ServerObj.addChatroom(roomRef,c);
 					roomRef++;
-					c.addClient(join_id,c1);
-					join_id++;
+					clientList.set(c1.getID(), c1);
+					c.addClient(c1.getID(),c1);
 				}
 				exists=false;
-				
-				temp = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: "+c1.getIP()+"\nPORT: "+c1.getPort()+"\nROOM_REF: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
+				System.out.println(roomRef);
+				temp = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: "+c1.getIP()+"\nPORT: "+c1.getPort()+"\nROOM_REF: "+c.getRef()+"\nJOIN_ID: "+c1.getID()+"\n";
 				System.out.println("temp=" + temp);
 				outToClient.write(temp.getBytes());
 				//test server msg
-				temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" JOINED\n\n";
-				System.out.println("temp=" + temp);
-				outToClient.write(temp.getBytes());
 				
-				//needs to be fixed big time TODO
-				
-//				for(Client client:clientList){
-//					if(ServerObj.getRoom(join_id-1).contains(client)){
-//						temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+client.getHandle()+"\nMESSAGE: "+c1.getHandle()+" JOINED\n\n";
-//						System.out.println("temp=" + temp);
-//						outToClient.write(temp.getBytes());
-//						
-//						DataOutputStream out = new
-//								DataOutputStream((client.getSocket()).getOutputStream());
-//						out.write(temp.getBytes());
-//					}
-//				}
+				for(Client client:clientList){
+					if(c.contains(client)){
+						temp = "CHAT:"+c.getRef()+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" JOINED\n\n";
+						System.out.println(client.getHandle() + "=" + temp);
+						//outToClient.write(temp.getBytes());
+						
+						DataOutputStream out = new
+								DataOutputStream((client.getSocket()).getOutputStream());
+						out.write(temp.getBytes());
+					}
+				}
 			}
 			else if (type ==2){
 				alive=false;
@@ -123,10 +118,10 @@ public class ServerThread extends Thread {
 			else if(type==3){
 				Chatroom c = null;
 				
-				roomRef = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("LEAVE_CHATROOM: ")+16,clientSentence.length()));
+				temp_ref = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("LEAVE_CHATROOM: ")+16,clientSentence.length()));
 				//read next
 				clientSentence = inFromClient.readLine();
-				join_id = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("JOIN_ID: ")+9,clientSentence.length()));
+				temp_id = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("JOIN_ID: ")+9,clientSentence.length()));
 				//read next
 				clientSentence = inFromClient.readLine();
 				clientName = clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
@@ -136,39 +131,69 @@ public class ServerThread extends Thread {
 				//	ServerObj.getRoom(temp_ref).removeClient(temp_id);
 				//}
 				
-				String t = "LEFT_CHATROOM: "+roomRef+"\nJOIN_ID: "+join_id+"\n";
+				String t = "LEFT_CHATROOM: "+temp_ref+"\nJOIN_ID: "+c1.getID()+"\n";
 				System.out.println("temp=" + t);
 				outToClient.write(t.getBytes());
 				//test server msg
-				temp = "CHAT:"+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+clientName+" LEFT\n\n";
-				System.out.println("temp=" + t);
-				outToClient.write(temp.getBytes());
-//				
-//				if(ServerObj.getRoom(join_id-1).getSize()>1){
-//					for(Client client:clientList){
-//						if(ServerObj.getRoom(join_id-1).contains(client)){
-//							DataOutputStream out = new
-//									DataOutputStream((client.getSocket()).getOutputStream());
-//							out.write(temp.getBytes());
-//						}
-//					}
-//				}
 				
+				c= ServerObj.getRoom(temp_ref);
+				for(Client client:clientList){
+					if(c!=null && c.contains(client)){
+						temp = "CHAT:"+temp_ref+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" LEFT\n\n";
+						System.out.println(client.getHandle() + "=" + temp);
+						//outToClient.write(temp.getBytes());
+						
+						DataOutputStream out = new
+								DataOutputStream((client.getSocket()).getOutputStream());
+						out.write(temp.getBytes());
+					}
+				}
+				c.removeClient(c1.getID());
+			}
+			else if(type==4){
+				Client temp_cli = null;
+				clientSentence = inFromClient.readLine();
+				client_ip = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("DISCONNECT: ")+12,clientSentence.length()));
+				clientSentence = inFromClient.readLine();
+				tcpPort = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("PORT: ")+6,clientSentence.length()));
+				clientSentence = inFromClient.readLine();
+				clientName =clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
+				
+				for(Client client:clientList){
+					if(client.getHandle().equals(clientName)){
+						temp_cli=client;
+						//leave chats etc
+					}
+				}
+				temp_cli.getSocket().close();
 			}
 			else if(type==5){
-				roomRef = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("CHAT: ")+6,clientSentence.length()));
+				Chatroom c=null;
+				temp_ref = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("CHAT: ")+6,clientSentence.length()));
 				//read next
 				clientSentence = inFromClient.readLine();
-				join_id = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("JOIN_ID: ")+9,clientSentence.length()));
+				temp_id = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("JOIN_ID: ")+9,clientSentence.length()));
 				//read next
 				clientSentence = inFromClient.readLine();
 				clientName =clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
 				//read next
 				clientSentence = inFromClient.readLine();
 				msg =clientSentence.substring(clientSentence.indexOf("MESSAGE: ")+9,clientSentence.length());
-				temp = "CHAT: "+roomRef+"\nCLIENT_NAME: "+clientName+"\nMESSAGE: "+msg+"\n\n";
-				System.out.println("temp=" + temp);
-				outToClient.write(temp.getBytes());
+				
+				c= ServerObj.getRoom(temp_ref);
+				if(c!=null){
+					for(Client client:clientList){
+						if(c.contains(client)){
+							temp = "CHAT:"+c.getRef()+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+msg+"\n\n";
+							System.out.println(client.getHandle() + " CHAT =" + temp);
+							//outToClient.write(temp.getBytes());
+							
+							DataOutputStream out = new
+									DataOutputStream((client.getSocket()).getOutputStream());
+							out.write(temp.getBytes());
+						}
+					}
+				}
 			}
     	}
     		socket.close();

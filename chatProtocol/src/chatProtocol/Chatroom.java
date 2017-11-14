@@ -8,12 +8,14 @@ public class Chatroom {
 	private String ip;
 	private int port;
 	private HashMap<Integer,Client> room;
+	private int ref;
 	
-	Chatroom(String ip_num, int port_num, String room_name){
+	Chatroom(String ip_num, int port_num, String room_name, int room_ref){
 		this.ip = ip_num;
 		this.port = port_num;
 		this.name = room_name;
 		this.room = new HashMap<Integer,Client>();
+		this.ref=room_ref;
 	}
 	
 	public String getIP(){
@@ -26,6 +28,10 @@ public class Chatroom {
 	
 	public String getName(){
 		return this.name;
+	}
+	
+	public int getRef(){
+		return this.ref;
 	}
 	
 	public String getClientName(int id){

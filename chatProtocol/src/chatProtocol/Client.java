@@ -7,19 +7,26 @@ public class Client implements AutoCloseable {
 	private int client_port;
 	private String handle;
 	private Socket sock;
+	private int id;
 	
 	Client(String ip, int port, String name, Socket socket){
 		this.client_ip = ip;
 		this.client_port = port;
 		this.handle = name;
 		this.sock=socket;
+		this.id = -1;
 	}
 	//for initial opening of socket
-	Client(String ip, int port, Socket socket){
+	Client(String ip, int port, Socket socket, int join_id){
 		this.client_ip = ip;
 		this.client_port = port;
 		this.handle = null;
 		this.sock=socket;
+		this.id = join_id;
+	}
+	
+	public int getID(){
+		return this.id;
 	}
 	
 	public String getIP(){
