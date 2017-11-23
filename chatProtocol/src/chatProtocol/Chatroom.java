@@ -58,6 +58,13 @@ public class Chatroom {
 		else return false;
 	}
 	
+	public boolean has(int id){
+		if(this.room.get(id)!=null){
+			return true;
+		}
+		return false;
+	}
+	
 	public int getSize(){
 		return this.room.size();
 	}

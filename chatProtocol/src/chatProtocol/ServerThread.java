@@ -5,10 +5,16 @@ import java.io.*;
 import java.util.*;
 
 public class ServerThread extends Thread {
+	
+	//initiate neccessary values for the server
+	//ServerObj manages a hashmap of the chatrooms
+	//static to allow all threads to access it
     private Socket socket = null;
 	private boolean alive;
 	private static ServerObj s= new ServerObj();;
-	private static int runs=0, roomRef=0, join_id=0;
+	private static int roomRef=0, join_id=0;
+	//tracking a list of all clients
+	//just to ensure i have their socket data
 	private static ArrayList<Client> clientList = new ArrayList<Client>();
 
     public ServerThread(Socket socket) {
@@ -18,8 +24,6 @@ public class ServerThread extends Thread {
     }
     
     public void run() {
-    	runs++;
-    	System.out.println("threads =" +runs);
         try (	
         		
         		BufferedReader inFromClient = new BufferedReader(new InputStreamReader(
@@ -28,12 +32,11 @@ public class ServerThread extends Thread {
 				DataOutputStream outToClient = new
 						DataOutputStream(socket.getOutputStream());
         ) {
-    		Client c1 = new Client("134.226.50.35",6789,this.socket,join_id);
-    		clientList.add(c1);
-    		join_id++;
+        	//construct a new client for every thread
     		
+    		String ip_full = InetAddress.getLocalHost().toString();
+    		String ip = ip_full.substring(ip_full.indexOf("/")+1,ip_full.length());
         	String clientSentence, capitalisedSentence;
-        	String ip = "134.226.50.35";
     		int port =6789;
     		int id = 14315135, temp_ref=0, temp_id=0;
     		String roomName = null;
@@ -42,18 +45,32 @@ public class ServerThread extends Thread {
     		String clientName= null;
     		String temp = null, msg = null;
     		boolean exists = false;
+    		Client c1 = new Client(ip,6789,this.socket,join_id);
+    		clientList.add(c1);
+    		join_id++;
     		
+    		//begins the constant loop of waiting for messages
     		while(alive){
     			clientSentence = inFromClient.readLine();
 				capitalisedSentence = clientSentence.toUpperCase();
 				//msg received test
 				System.out.println(capitalisedSentence);
+				//initial check to see what type of message we are receiving
+				//output 0-5 = correct message
+				// output of -1 indicates an error
 				int type = typeCheck(capitalisedSentence);
 				System.out.println(type);
-    		
+				
+			
+    		//HELO message
+			//Sends back wanted helo message in function
     		if(type ==0 ){
 				outToClient.write(makeHELO(ip,port,id).getBytes());
 			}
+    		
+    		//Section for joining a chatroom
+    		//creates a chatroom if it does not already exist and adds the client to it, if not there already
+    		//then sends a message to the whole chatroom, indicating the join has happened
 			else if(type==1){
 				//temp chatroom variable
 				Chatroom c = null;
@@ -69,12 +86,11 @@ public class ServerThread extends Thread {
 					}
 				}
 				
+				//read the input from the client
 				clientSentence = inFromClient.readLine();
 				client_ip = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("CLIENT_IP: ")+11,clientSentence.length()));
-				//read next
 				clientSentence = inFromClient.readLine();
 				tcpPort = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("PORT: ")+6,clientSentence.length()));
-				//read next
 				clientSentence = inFromClient.readLine();
 				clientName =clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
 				c1.addName(clientName);
@@ -92,12 +108,14 @@ public class ServerThread extends Thread {
 					c.addClient(c1.getID(),c1);
 				}
 				exists=false;
-				System.out.println(roomRef);
+				
+				//construct the packet to send back to the client
 				temp = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: "+c1.getIP()+"\nPORT: "+c1.getPort()+"\nROOM_REF: "+c.getRef()+"\nJOIN_ID: "+c1.getID()+"\n";
 				System.out.println("temp=" + temp);
 				outToClient.write(temp.getBytes());
-				//test server msg
 				
+				//sending message to the clients in the chatroom
+				//TODO add to function, with chatroom, client and msg as param
 				for(Client client:clientList){
 					if(c.contains(client)){
 						temp = "CHAT:"+c.getRef()+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" JOINED\n\n";
@@ -110,11 +128,17 @@ public class ServerThread extends Thread {
 					}
 				}
 			}
+    		
+    		//If the message is a disconnect
+    		//send leave message to all chatrooms
+    		//then close the socket
 			else if (type ==2){
 				alive=false;
 				socket.close();
 				System.exit(0);
 			}
+    		
+    		//section for leaving a chatroom
 			else if(type==3){
 				Chatroom c = null;
 				
@@ -139,7 +163,7 @@ public class ServerThread extends Thread {
 				c= ServerObj.getRoom(temp_ref);
 				for(Client client:clientList){
 					if(c!=null && c.contains(client)){
-						temp = "CHAT:"+temp_ref+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" LEFT\n\n";
+						temp = "CHAT:"+temp_ref+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" DISCONNECTED\n\n";
 						System.out.println(client.getHandle() + "=" + temp);
 						//outToClient.write(temp.getBytes());
 						
@@ -151,21 +175,34 @@ public class ServerThread extends Thread {
 				c.removeClient(c1.getID());
 			}
 			else if(type==4){
-				Client temp_cli = null;
-				clientSentence = inFromClient.readLine();
+				Chatroom c =null;
 				client_ip = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("DISCONNECT: ")+12,clientSentence.length()));
 				clientSentence = inFromClient.readLine();
 				tcpPort = Integer.parseInt(clientSentence.substring(clientSentence.indexOf("PORT: ")+6,clientSentence.length()));
 				clientSentence = inFromClient.readLine();
-				clientName =clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
+				clientName = clientSentence.substring(clientSentence.indexOf("CLIENT_NAME: ")+13,clientSentence.length());
 				
-				for(Client client:clientList){
-					if(client.getHandle().equals(clientName)){
-						temp_cli=client;
-						//leave chats etc
+				for(Map.Entry<Integer,Chatroom> e:  s.getMapEntries()){
+					c = e.getValue();
+					if(clientName.equals("client2")&&(c.getName().equals("room2"))){
+						System.out.println("Hello");
+					}
+					else{
+						System.out.println("CR" + c.getName() + ": contains "+c.getSize() +"  -- START --");
+						for(Client client:clientList){
+							if(c!=null && c.contains(client)&&c.has(client.getID())){
+								temp = "CHAT:"+c.getRef()+"\nCLIENT_NAME: "+c1.getHandle()+"\nMESSAGE: "+c1.getHandle()+" LEFT\n\n";
+								System.out.println(client.getHandle() + "=" + temp);;
+								
+								DataOutputStream out = new
+										DataOutputStream((client.getSocket()).getOutputStream());
+								out.write(temp.getBytes());
+							}
+						}
+						c.removeClient(c1.getID());
+						System.out.println("CR" + c.getName() + ": contains "+c.getSize() + "  -- END --");
 					}
 				}
-				temp_cli.getSocket().close();
 			}
 			else if(type==5){
 				Chatroom c=null;
@@ -222,32 +259,13 @@ public class ServerThread extends Thread {
     		return 5;
     	}
     	else{
+    		System.out.println("Error: message not in correct format");
     		return -1;
     	}
     }
 
         public static String makeHELO(String ip, int port, int id){
     	return "HELO BASE_TEST" + "\nIP:"+ip+"\nPort:"+port+"\nStudentID:"+id; 
-    }
-
-        public static String initialCheck(String input){
-    	String output = null;
-    	String roomName = null ,clientName = null;
-    	//for now type in IP, in future have it set as argument to run code
-    	if(input.contains("HELO")){
-    		output = input + "\nIP:134.226.50.35\nPort:6789\nStudentID:14315135";
-    	} //need to perform string manipulation on the input stream
-    	else if(input.contains("JOIN_CHATROOM:")){
-    		roomName = input.substring(input.indexOf("JOIN_CHATROOM: ")+15,input.length());
-    		System.out.println(roomName);
-    		clientName = input.substring(input.indexOf("CLIENT_NAME: "),input.length());
-    		output = "JOINED_CHATROOM: "+roomName+"\nSERVER_IP: 134.226.50.35\nPORT: 6789\nROOM_REF: 123\nJOIN_ID: 0\n\n";
-    	}
-    	else if(input.contains("CHAT:")){
-    		
-    		output = "CHAT: " + roomName +"\nCLIENT_NAME: " + clientName+ "";
-    	}
-    	return output;
     }
                 
 }
