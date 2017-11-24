@@ -26,5 +26,42 @@ Then sends back a message to indicate that the join has occured.
 >ROOM_REF: [integer that uniquely identifies chat room on server]  
 >JOIN_ID: [integer that uniquely identifies client joining]  
 
-Server also then sends a chat message to everyone in the chatroom to indicate that the client has joined the room.  
+Server also then sends a chat message to everyone in the chatroom to indicate that the client has joined the room. This is of the form of the message sent to the chat room when a CHAT message is sent by a client.  
+  
+### Leaving a chatroom  
+Client sends a leave request for a chatroom  
+>LEAVE_CHATROOM: [ROOM_REF]  
+>JOIN_ID: [integer previously provided by server on join]  
+>CLIENT_NAME: [string Handle to identifier client user]  
+
+The server handles this by removing the client from the chat room, and sends the client the following message as an acknowledgement  
+>LEFT_CHATROOM: [ROOM_REF]  
+>JOIN_ID: [integer previously provided by server on join]  
+
+The server also sends a chat message to all clients in the chat room to update them that the client has left.  
+
+### Chat Messages
+Clients can send messages to all clients in any given chat room that they are in, they can also send messages to multiple chatrooms concurrently  
+>CHAT: [ROOM_REF]  
+>JOIN_ID: [integer identifying client to server]  
+>CLIENT_NAME: [string identifying client user]  
+>MESSAGE: [string terminated with '\n\n']  
+
+The server then sends the following chat message to all members of the chat room. (Same format as join/leave messages)  
+>CHAT: [ROOM_REF]  
+>CLIENT_NAME: [string identifying client user]  
+>MESSAGE: [string terminated with '\n\n']  
+
+### Disconnecting  
+Clients can disconnext from the chat server by sending the following message:  
+>DISCONNECT: [IP address of client if UDP | 0 if TCP]  
+>PORT: [port number of client it UDP | 0 id TCP]  
+>CLIENT_NAME: [string handle to identify client user] 
+The server then treats this as a LEAVE message for all of the chatroooms that the client is currently in, and carries out the neccessary actions from there. The server then closes the socket for this client to disable further communication.  
+
+### Kill Service
+The server as a whole can be killed at any given time by the clients by sending the kill message:  
+>KILL_SERVICE\n  
+This closes all sockets and kills the program execution in it's tracks.  
+
 
