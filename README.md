@@ -56,12 +56,14 @@ The server then sends the following chat message to all members of the chat room
 Clients can disconnext from the chat server by sending the following message:  
 >DISCONNECT: [IP address of client if UDP | 0 if TCP]  
 >PORT: [port number of client it UDP | 0 id TCP]  
->CLIENT_NAME: [string handle to identify client user] 
+>CLIENT_NAME: [string handle to identify client user]  
+
 The server then treats this as a LEAVE message for all of the chatroooms that the client is currently in, and carries out the neccessary actions from there. The server then closes the socket for this client to disable further communication.  
 
 ### Kill Service
 The server as a whole can be killed at any given time by the clients by sending the kill message:  
->KILL_SERVICE\n  
+>KILL_SERVICE  
+
 This closes all sockets and kills the program execution in it's tracks.  
 
 
