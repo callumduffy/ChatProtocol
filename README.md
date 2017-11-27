@@ -4,9 +4,9 @@ Server made for Internet Applications module in 4th Year of Trinity College Dubl
 Current score on the test server is 102% somehow.  
 
 ## Compilation and Running  
--I have added a compile.sh file, just as it is in the spec, it does nothing but it will do you no harm to run...I promise.  
--Then run the run.sh, in the format "bash run.sh <port number>"  
--This executes the runnable .jar file, as I was having a strange error with the jre not recognising my main using regular javac and java commands.  
+- I have added a compile.sh file, just as it is in the spec, it does nothing but it will do you no harm to run...I promise.  
+- Then run the run.sh, in the format "bash run.sh <port number>"  
+- This executes the runnable .jar file, as I was having a strange error with the jre not recognising my main using regular javac and java commands.  
 
 ## Specifications
 Written in java and made to handle multiple clients concurrently, handling each request and sending the appropriate responses  
