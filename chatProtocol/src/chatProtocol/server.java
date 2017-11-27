@@ -7,7 +7,7 @@ import java.util.*;
 public class server{
 	public static void main(String[] args) throws IOException {
 		//have to modify to use args for port number
-		int portNumber = 6789;
+		int portNumber = Integer.parseInt(args[0]);
 	    boolean listening = true;
 
         
